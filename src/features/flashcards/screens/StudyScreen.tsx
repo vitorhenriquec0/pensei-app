@@ -7,22 +7,23 @@ export function StudyScreen() {
     const router = useRouter();
 
     return (
-        <View className="flex-1 bg-slate-50 px-6 pt-16">
+        <View className="flex-1 bg-primary px-6 pt-16">
             {/* Cabeçalho */}
             <View className="flex-row items-center justify-between mb-10">
                 <TouchableOpacity onPress={() => router.back()} className="p-2">
-                    <Text className="text-slate-500 font-bold">← Voltar</Text>
+                    <Text className="text-primary-light font-bold">← Voltar</Text>
                 </TouchableOpacity>
-                <Text className="text-slate-800 font-bold text-lg">Sessão de Estudo</Text>
-                <View className="w-12" /> {/* Espaçador para centralizar o título */}
+                <Text className="text-primary-light font-bold text-xl">Sessão de Estudo</Text>
+                {/* Espaçador para centralizar o título */}
+                <View className="w-12" />
             </View>
 
-                <View className="flex-1 items-center justify-center mb-20">
-                    <Flashcard
-                        pergunta="O que o princípio do Baixo Acoplamento defende na Arquitetura de Software?"
-                        resposta="Que os módulos devem ser o mais independentes possível, para que mudanças em um não quebrem o outro."
-                    />
-                </View>
+            <View className="flex-1 items-center justify-center mb-20">
+                <Flashcard
+                    pergunta="O que o princípio do Baixo Acoplamento defende na Arquitetura de Software?"
+                    resposta="Que os módulos devem ser o mais independentes possível, para que mudanças em um não quebrem o outro."
+                />
             </View>
+        </View>
     );
 }
