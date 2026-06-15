@@ -30,7 +30,7 @@ export function CreateBookScreen() {
         {/* Cabeçalho */}
         <View className="flex-column items-center justify-between mb-10">
           <TouchableOpacity onPress={() => router.back()} className="p-2">
-            <ArrowBigLeft color="text-slate-400" />
+            <ArrowBigLeft color="#94a3b8" />
             <Text className="text-slate-400 font-bold">Voltar</Text>
           </TouchableOpacity>
           <Text className="text-white font-bold text-lg">Novo Caderno</Text>

@@ -32,7 +32,7 @@ export function CreateCardScreen() {
         {/* Cabeçalho */}
         <View className="flex-row items-center justify-between mb-8">
           <TouchableOpacity onPress={() => router.back()} className="p-2">
-            <ArrowRight color="slate-400" size={24} />
+            <ArrowRight color="#94a3b8" size={24} />
             <Text className="text-slate-400 font-bold">Voltar</Text>
           </TouchableOpacity>
           <Text className="text-white font-bold text-lg">Novo Flashcard</Text>

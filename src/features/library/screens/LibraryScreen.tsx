@@ -49,7 +49,7 @@ export function LibraryScreen() {
 
         {/* Barra de pesquisa */}
         <View className="bg-surface-paper flex-row items-center px-4 py-2 rounded-2xl border border-slate-700 mb-2">
-          <Search color="slate-400" />
+          <Search color="#94a3b8" />
           <TextInput
             placeholder="Buscar cadernos..."
             placeholderTextColor="#64748B"
@@ -70,8 +70,7 @@ export function LibraryScreen() {
             activeOpacity={0.7}
             className="bg-surface rounded-2xl p-4 mb-4 border border-slate-700 flex-row items-center shadow-sm"
             onPress={() => {
-              // abrira o bookdetailscreen
-              console.log("Abrir livro: ", book.titulo);
+                router.push('/book-detail');
             }}
           >
             {/* Ícone do PDF */}
