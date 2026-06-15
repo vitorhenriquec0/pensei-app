@@ -73,11 +73,11 @@ export function DashboardScreen() {
         {/* Botão de Adicionar Novo Arquivo */}
         <TouchableOpacity 
           activeOpacity={0.7}
-          // Borda tracejada adaptada para o modo escuro
+          onPress={() => router.push('/create-book')}
           className="bg-surface p-5 rounded-2xl border-2 border-dashed border-slate-700 mb-8 items-center justify-center py-6"
         >
           <Text className="text-slate-400 font-semibold">
-            + Novo Caderno ou PDF
+            + Novo Caderno/Livro/PDF
           </Text>
         </TouchableOpacity>
       </View>
