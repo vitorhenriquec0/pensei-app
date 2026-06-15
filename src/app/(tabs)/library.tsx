@@ -1,9 +1,5 @@
-import { View, Text } from "react-native";
+import { LibraryScreen } from '../../features/library/screens/LibraryScreen';
 
 export default function LibraryRoute() {
-    return (
-        <View className="flex-1 bg-surface items-center justify-center">
-            <Text className="text-white font-bold text-xl">Sua Biblioteca</Text>
-        </View>
-    )
+  return <LibraryScreen />;
 }
