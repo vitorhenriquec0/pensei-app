@@ -12,6 +12,7 @@ import {
 import { useRouter } from "expo-router";
 import { ArrowBigLeft, Plus } from "lucide-react-native/icons";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import Toast from "react-native-toast-message";
 import { db } from "../../../config/firebase";
 
 export function CreateBookScreen() {
@@ -39,10 +40,21 @@ export function CreateBookScreen() {
         ultimoAcesso: serverTimestamp(),
       });
 
+      Toast.show({
+        type: 'success',
+        text1: 'Caderno criado!',
+        text2: 'Seu novo caderno já está pronto para uso.',
+      });
+
       // sucedido: volta para o ecrâ anterior
       router.back();
     } catch (error) {
       console.error("Erro ao guardar o caderno:", error); 
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Não foi possível criar o caderno.',
+      });
     } finally {
       setIsLoading(false);
     }

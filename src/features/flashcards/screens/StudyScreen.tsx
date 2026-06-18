@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { Flashcard } from "../components/Flashcard";
+import { ArrowLeftCircleIcon } from "lucide-react-native";
 
 export function StudyScreen() {
     const router = useRouter();
@@ -9,9 +10,9 @@ export function StudyScreen() {
     return (
         <View className="flex-1 bg-primary px-6 pt-16">
             {/* Cabeçalho */}
-            <View className="flex-row items-center justify-between mb-10">
-                <TouchableOpacity onPress={() => router.back()} className="p-2">
-                    <Text className="text-primary-light font-bold">← Voltar</Text>
+            <View className="flex-row items-center justify-between  mb-10">
+                <TouchableOpacity onPress={() => router.back()} className="flex-row items-center justify-center ">
+                    <ArrowLeftCircleIcon size={24} color="#FEF08A" />                
                 </TouchableOpacity>
                 <Text className="text-primary-light font-bold text-xl">Sessão de Estudo</Text>
                 {/* Espaçador para centralizar o título */}
