@@ -10,7 +10,7 @@ export function StudyScreen() {
     return (
         <View className="flex-1 bg-primary px-6 pt-16">
             {/* Cabeçalho */}
-            <View className="flex-row items-center justify-between  mb-10">
+            <View className="flex-row items-center justify-between mb-10">
                 <TouchableOpacity onPress={() => router.back()} className="flex-row items-center justify-center ">
                     <ArrowLeftCircleIcon size={24} color="#FEF08A" />                
                 </TouchableOpacity>
