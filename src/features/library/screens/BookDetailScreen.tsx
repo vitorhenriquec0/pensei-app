@@ -245,7 +245,11 @@ export function BookDetailScreen() {
                         ) : null}
 
                         {flashcards.map((card) => (
-                            <View key={card.id} className="bg-surface rounded-xl p-4 mb-3 border border-slate-800">
+                            <TouchableOpacity
+                                key={card.id}
+                                className="bg-surface rounded-xl p-4 mb-3 border border-slate-800"
+                                activeOpacity={0.7}
+                                onPress={() => router.push({ pathname: '/card-detail', params: { livroId: id, cardId: card.id }})}>
                                 {card.contexto ? (
                                     <Text className="text-primary text-[10px] font-bold uppercase mb-1" numberOfLines={1}>
                                         {card.contexto}
@@ -254,7 +258,7 @@ export function BookDetailScreen() {
 
                                 <Text className="text-white font-bold text-sm">{card.pergunta}</Text>
                                 <Text className="text-slate-500 text-xs" numberOfLines={2}>{card.resposta}</Text>
-                            </View>
+                            </TouchableOpacity>
                         ))}
                         
                     </BottomSheetScrollView>

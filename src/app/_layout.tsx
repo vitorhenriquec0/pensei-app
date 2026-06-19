@@ -18,6 +18,7 @@ export default function RootLayout() {
         <Stack.Screen name="create-card" options={{ presentation: 'modal' }} />
         <Stack.Screen name="create-book" options={{ presentation: 'modal' }} />
         <Stack.Screen name="book/[id]" />
+        <Stack.Screen name="card-detail" options={{ presentation: 'modal' }} />
       </Stack>
       <Toast />
     </GestureHandlerRootView>

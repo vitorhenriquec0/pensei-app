@@ -113,7 +113,7 @@ export function LibraryScreen() {
         </Text>
 
         {/* Barra de pesquisa */}
-        <View className="bg-surface-paper flex-row items-center px-4 py-2 rounded-2xl border border-slate-700 mb-2">
+        <View className="bg-surface-paper flex-row items-center px-4 py-2 rounded-full border border-slate-700 mb-2">
           <Search color="#94a3b8" size={18} />
           <TextInput
             placeholder="Buscar cadernos..."
