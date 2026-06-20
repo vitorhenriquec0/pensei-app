@@ -18,9 +18,9 @@ import { db } from "../../../config/firebase";
 export function CreateCardScreen() {
   const router = useRouter();
 
-  const { livroId } = useLocalSearchParams();
+  const { livroId, contextoSugerido, localizacaoY } = useLocalSearchParams();
 
-  const [contexto, setContexto] = useState("");
+  const [contexto, setContexto] = useState((contextoSugerido as string) || '');
   const [pergunta, setPergunta] = useState("");
   const [resposta, setResposta] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +43,7 @@ export function CreateCardScreen() {
         pergunta: pergunta.trim(),
         resposta: resposta.trim(),
         contexto: contexto.trim() || null,
+        localizacaoPdfY: localizacaoY ? Number(localizacaoY) : null,
         dataCriacao: serverTimestamp(),
         nivelRevisao: 0,
         proximaRevisao: serverTimestamp(),

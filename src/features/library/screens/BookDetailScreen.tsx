@@ -3,13 +3,18 @@ import {
     View,
     Text,
     TouchableOpacity,
-    ScrollView,
     ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { ArrowLeftCircleIcon } from "lucide-react-native";
+import { ArrowLeftCircleIcon, PlusIcon } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// motor de ficheiros e web
+import { WebView } from "react-native-webview";
+import * as FileSystem from 'expo-file-system/legacy';
+
+// firebase
 import {
     doc,
     onSnapshot,
@@ -23,6 +28,7 @@ interface LivroData {
     titulo: string;
     descricao?: string;
     progresso: number;
+    pdfUri?: string;
 }
 
 interface FlashcardData {
@@ -46,6 +52,11 @@ export function BookDetailScreen() {
 
     // estado para guardar os flashcards desse documento
     const [flashcards, setFlashcards] = useState<FlashcardData[]>([]);
+
+    // estados do motor de PDF
+    const [pdfBase64, setPdfBase64] = useState<string | null>(null);
+    const [textoSelecionado, setTextoSelecionado] = useState<string>('');
+    const [localizacaoSelecionada, setLocalizacaoSelecionada] = useState<number | null>(null);
 
     // enquanto a tela é carregada
     useEffect(() => {
@@ -76,6 +87,7 @@ export function BookDetailScreen() {
                         titulo: data.titulo || "Sem Título",
                         descricao: data.descricao,
                         progresso: data.progresso || 0,
+                        pdfUri: data.pdfUri,
                     });
                     setError(false);
                 } else {
@@ -121,6 +133,170 @@ export function BookDetailScreen() {
             unsubscribeCards();
         };
     }, [id]); // o id é a dependência: se mudar, recarrega os dados
+
+
+    // conversão para memoria (base64)
+    useEffect(() => {
+        const processarPdf = async () => {
+            if (livro?.pdfUri) {
+                try {
+                    // le o arquivo do disco do celular e converte para string
+                    const base64 = await FileSystem.readAsStringAsync(livro.pdfUri, {
+                        encoding: FileSystem.EncodingType.Base64,
+                    })
+                    setPdfBase64(base64);
+                } catch (e) {
+                    console.error("Erro ao processar o PDF:", e);
+                }
+            }
+        };
+
+        // só executa se o livro ja tiver carregado e tiver um PDF
+        if (livro && livro.pdfUri) {
+            processarPdf();
+        }
+    }, [livro]); // depende do livro, se mudar, recarrega o PDF
+
+
+    // o html que seja injetado no WebView para permitir a seleção de texto
+    const gerarHtmlPdf = (base64Data: string) => `
+    <!DOCTYPE html>
+    <html lang="pt">
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+        <style>
+            body { margin: 0; background-color: #0F172A; display: flex; flex-direction: column; align-items: center; padding-bottom: 100px; }
+            
+            /* O container precisa ser 'relative' para o texto flutuar sobre ele */
+            .page-container { position: relative; margin-bottom: 12px; box-shadow: 0px 4px 10px rgba(0,0,0,0.5); }
+            canvas { display: block; max-width: 100%; height: auto; }
+            
+            /* A CSS da camada invisível */
+            .text-layer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; color: transparent; pointer-events: auto; }
+            .text-layer span { position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; }
+            
+            /* Cor do "grifo" quando o usuario seleciona o texto */
+            ::selection { background: rgba(234, 179, 8, 0.4); color: transparent; }
+            
+            .loading { color: #94a3b8; font-family: sans-serif; margin-top: 50px; }
+        </style>
+    </head>
+    <body>
+        <div id="pdf-container"><div class="loading">Descodificando o PDF e mapeando texto...</div></div>
+        
+        <script>
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+            const pdfData = atob('${base64Data}');
+            const pdfArray = new Uint8Array(pdfData.length);
+            for (let i = 0; i < pdfData.length; i++) {
+                pdfArray[i] = pdfData.charCodeAt(i);
+            }
+
+            pdfjsLib.getDocument({ data: pdfArray }).promise.then(pdf => {
+                const container = document.getElementById('pdf-container');
+                container.innerHTML = ''; 
+
+                const totalPages = Math.min(pdf.numPages, 5); 
+                
+                for(let i = 1; i <= totalPages; i++) {
+                    pdf.getPage(i).then(page => {
+
+                        // pega o tamanho original da pagina
+                        const unscaledViewport = page.getViewport({ scale: 1.0 });
+
+                        // calcula a escala exata para caber na largura da tela
+                        const scaleRequired = (window.innerWidth - 16) / unscaledViewport.width;
+                        
+                        // aplica a escala
+                        const viewport = page.getViewport({ scale: scaleRequired });
+
+                        // cria a "Caixa" da Página
+                        const pageContainer = document.createElement('div');
+                        pageContainer.className = 'page-container';
+                        pageContainer.style.width = viewport.width + 'px';
+                        pageContainer.style.height = viewport.height + 'px';
+                        container.appendChild(pageContainer);
+
+                        // desenha a Imagem 
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        pageContainer.appendChild(canvas);
+
+                        // renderiza a Imagem e depois injeta a Camada de Texto
+                        page.render({ canvasContext: context, viewport: viewport }).promise.then(() => {
+                            return page.getTextContent();
+                        }).then(textContent => {
+                            const textLayer = document.createElement('div');
+                            textLayer.className = 'text-layer';
+                            pageContainer.appendChild(textLayer);
+
+                            // mapeia cada palavra para flutuar no pixel exato
+                            textContent.items.forEach(item => {
+                                const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+                                const fontHeight = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
+                                
+                                const span = document.createElement('span');
+                                span.textContent = item.str + ' ';
+                                span.style.left = tx[4] + 'px';
+                                span.style.top = (tx[5] - fontHeight) + 'px';
+                                span.style.fontSize = fontHeight + 'px';
+                                span.style.fontFamily = item.fontName;
+                                
+                                textLayer.appendChild(span);
+                            });
+                        });
+                    });
+                }
+            }).catch(err => {
+                document.getElementById('pdf-container').innerHTML = '<div class="loading">Erro: ' + err.message + '</div>';
+            });
+
+            // detecta a seleção invisível e manda para o React Native
+            document.addEventListener('selectionchange', () => {
+                const selection = window.getSelection();
+                const text = selection.toString();
+
+                if (text.trim().length > 0 && selection.rangeCount > 0) {
+                    // pega o retangulo da seleção na tela
+                    const range = selection.getRangeAt(0);
+                    const rect = range.getBoundingClientRect();
+
+                    // calcula a coordenada absoluta
+                    const absoluteY = rect.top + window.scrollY;
+
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                        tipo: 'TEXTO_SELECIONADO',
+                        payload: text,
+                        localizacaoY: absoluteY
+                    }));
+                } else {
+                    // se o usuario clicar fora, limpa a seleção
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                        tipo: 'LIMPAR_SELECAO'
+                    }));
+                }
+            });
+        </script>
+    </body>
+    </html>
+    `;
+
+    const onWebViewMessage = (event: any) => {
+        try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.tipo === 'TEXTO_SELECIONADO') {
+                setTextoSelecionado(data.payload.trim());
+                setLocalizacaoSelecionada(data.localizacaoY);
+            } else if (data.tipo === 'LIMPAR_SELECAO') {
+                setTextoSelecionado('');
+                setLocalizacaoSelecionada(null);
+            }
+        } catch (e) {}
+    };
 
     // referencia para controlar a gaveta (abrir e fechar caso necessário)
     const bottomSheetRef = useRef<BottomSheet>(null);
@@ -177,28 +353,42 @@ export function BookDetailScreen() {
             </View>
 
             {/* Leitura */}
-            <ScrollView className="flex-1 px-6">
-                {livro.descricao && (
-                    <Text className="text-primary/80 font-semibold mb-4 text-sm text-center">
-                        {livro.descricao}
-                    </Text>
+            <View className="flex-1 bg-[#0F172A]">
+                {livro.pdfUri && pdfBase64 ? (
+                    <WebView
+                        originWhitelist={['*']}
+                        source={{ html: gerarHtmlPdf(pdfBase64) }}
+                        onMessage={onWebViewMessage}
+                        style={{ flex: 1, backgroundColor: 'transparent' }}
+                        showsVerticalScrollIndicator={false}
+                        setBuiltInZoomControls={true}
+                        setDisplayZoomControls={false}
+                        scalesPageToFit={true}
+                    />
+                ) : (
+                    <View className="flex-1 items-center justify-center px-6">
+                        <Text className="text-slate-500 text-center text-lg">
+                            Este caderno não possui um PDF anexado.
+                        </Text>
+                    </View>
                 )}
-                <Text className="text-slate-300 text-lg leading-relaxed text-justify mb-40">
-                    O projeto de arquitetura de software deve mitigar riscos de manutenção
-                    precoce.
-                    {"\n\n"}
-                    <Text className="bg-primary/20 text-primary font-bold px-1 rounded">
-                        O princípio do Baixo Acoplamento defende que os módulos devem ser
-                        independentes
-                    </Text>
-                    , garantindo que alterações isoladas não propaguem erros colaterais em
-                    cascata por todo o sistema.
-                    {"\n\n"}
-                    Esta modularidade permite que equipes trabalhem em paralelo,
-                    substituindo peças da arquitetura sem comprometer o núcleo da
-                    aplicação.
-                </Text>
-            </ScrollView>
+            </View>
+
+            {/* Botão de extração de texto */}
+            {textoSelecionado.length > 0 && (
+                <TouchableOpacity
+                    activeOpacity={0.9}
+                    //envia o textoSelecionado como parametro para a tela de criação de card
+                    onPress={() => router.push({
+                        pathname: "/create-card",
+                        params: { livroId: id, contextoSugerido: textoSelecionado, localizacaoY: localizacaoSelecionada }
+                    })}
+                    className="absolute bottom-32 right-6 bg-primary px-6 py-4 rounded-full flex-row items-center shadow-lg border-2 border-yellow-300 z-50"
+                >
+                    <PlusIcon color="#0F172A"  size={20}/>
+                    <Text className="text-surface font-extrabold ml-2">Criar Flashcard</Text>
+                </TouchableOpacity>
+            )}
 
             {/* Bottom Sheet */}
             <BottomSheet
@@ -236,11 +426,10 @@ export function BookDetailScreen() {
                     </TouchableOpacity>
 
                     {/* Lista Simples de Cards existentes */}
-
                     <BottomSheetScrollView showsVerticalScrollIndicator={false}>
                         {flashcards.length === 0 ? (
                             <View className="items-center justify-center mt-10">
-                                <Text className="text-slate-500 text-center">Nenhum flashcard encontrado. Fixe um trecho do material para criar o seu primeiro flashcard!</Text>
+                                <Text className="text-slate-500 text-center">Nenhum flashcard encontrado. Sublinhe o PDF para extrair conceitos!</Text>
                             </View>
                         ) : null}
 
