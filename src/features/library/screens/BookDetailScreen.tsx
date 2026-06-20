@@ -7,7 +7,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { ArrowLeftCircleIcon, PlusIcon } from "lucide-react-native";
+import { ArrowLeftCircleIcon, PlusIcon, MapPinIcon } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // motor de ficheiros e web
@@ -36,6 +36,7 @@ interface FlashcardData {
     pergunta: string;
     resposta: string;
     contexto?: string;
+    localizacaoPdfY?: number;
 }
 
 export function BookDetailScreen() {
@@ -116,6 +117,7 @@ export function BookDetailScreen() {
                         pergunta: data.pergunta,
                         resposta: data.resposta,
                         contexto: data.contexto,
+                        localizacaoPdfY: data.localizacaoPdfY,
                     });
                 });
 
@@ -303,9 +305,19 @@ export function BookDetailScreen() {
     // define as posições da gaveta em relação à tela
     const snapPoints = useMemo(() => ["15%", "50%", "90%"], []);
 
-    {
-        /* Estados condicionais */
+    const webViewRef = useRef<WebView>(null);
+
+    const scrollToY = (y: number) => {
+        // injeta o js no html para o smooth scroll
+        webViewRef.current?.injectJavaScript(`
+            window.scrollTo({ top: ${y}, behavior: 'smooth' });
+            true;
+        `);
+
+        bottomSheetRef.current?.snapToIndex(0); // fecha a gaveta após clicar no flashcard
     }
+
+    {/* Estados condicionais */}
 
     // carregando os dados
     if (loading) {
@@ -356,6 +368,7 @@ export function BookDetailScreen() {
             <View className="flex-1 bg-[#0F172A]">
                 {livro.pdfUri && pdfBase64 ? (
                     <WebView
+                        ref={webViewRef}
                         originWhitelist={['*']}
                         source={{ html: gerarHtmlPdf(pdfBase64) }}
                         onMessage={onWebViewMessage}
@@ -418,7 +431,7 @@ export function BookDetailScreen() {
                         onPress={() =>
                             router.push({ pathname: "/create-card", params: { livroId: id } })
                         }
-                        className="bg-surface border border-dashed border-slate-600 rounded-xl p-4 items-center mb-6"
+                        className="bg-surface border border-dashed border-slate-600 rounded-full p-4 items-center mb-6"
                     >
                         <Text className="text-slate-400 font-semibold text-sm">
                             + Toque para fixar um trecho
@@ -434,20 +447,36 @@ export function BookDetailScreen() {
                         ) : null}
 
                         {flashcards.map((card) => (
-                            <TouchableOpacity
-                                key={card.id}
-                                className="bg-surface rounded-xl p-4 mb-3 border border-slate-800"
-                                activeOpacity={0.7}
-                                onPress={() => router.push({ pathname: '/card-detail', params: { livroId: id, cardId: card.id }})}>
-                                {card.contexto ? (
-                                    <Text className="text-primary text-[10px] font-bold uppercase mb-1" numberOfLines={1}>
+                            <View key={card.id} className="bg-surface rounded-xl p-4 mb-3 border border-slate-800">
+
+                                {/* Contexto*/}
+                                {card.contexto && card.localizacaoPdfY ? (
+                                    <TouchableOpacity
+                                        activeOpacity={0.7}
+                                        onPress={() => scrollToY(card.localizacaoPdfY!)}
+                                        className="bg-primary self-start p-1 rounded-full mb-2 flex-row items-center gap-2"
+                                    >
+                                        <MapPinIcon color="#fff" size={18}/>
+                                        <Text className="text-white text-[10px] font-bold uppercase" numberOfLines={1}>
+                                            Ir para o contexto{' '}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ) : card.contexto ? (
+                                    // caso nao tenha coordenada por algum motivo
+                                    <Text className="text-primary text-[10px] font-bold uppercase mb-2" numberOfLines={1}>
                                         {card.contexto}
                                     </Text>
                                 ) : null }
 
-                                <Text className="text-white font-bold text-sm">{card.pergunta}</Text>
-                                <Text className="text-slate-500 text-xs" numberOfLines={2}>{card.resposta}</Text>
-                            </TouchableOpacity>
+                                {/* Pergunta e Resposta (edicao do card) */}
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    onPress={() => router.push({ pathname: '/card-detail', params: { livroId: id, cardId: card.id }})}
+                                >
+                                    <Text className="text-white font-bold text-sm mb-1">{card.pergunta}</Text>
+                                    <Text className="text-slate-500 text-xs" numberOfLines={2}>{card.resposta}</Text>
+                                </TouchableOpacity>
+                            </View>
                         ))}
                         
                     </BottomSheetScrollView>
