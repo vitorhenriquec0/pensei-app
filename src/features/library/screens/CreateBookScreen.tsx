@@ -10,55 +10,128 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { ArrowBigLeft, Plus } from "lucide-react-native/icons";
+import { ArrowBigLeft, Plus, FileTextIcon } from "lucide-react-native";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+
+// sistema de ficheiros
+import * as DocumentPicker from 'expo-document-picker';
+import { File, Paths } from 'expo-file-system';
+
+// firebase
 import Toast from "react-native-toast-message";
 import { db } from "../../../config/firebase";
+
+interface PDF {
+  uri: string;
+  nome: string;
+  tamanho?: number;
+}
 
 export function CreateBookScreen() {
   const router = useRouter();
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
+
+  // estado para guardar o pdf temporario selecionado
+  const [pdf, setPdf] = useState<PDF | null>(null)
+
   const [isLoading, setIsLoading] = useState(false);
 
+  // abrir o seletor de arquivos para escolher um PDF
+  const handleSelecionarPDF = async() => {
+    try {
+      const resultado = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf', // filtro
+        copyToCacheDirectory: true, // copia para cache
+      });
+
+      if (!resultado.canceled && resultado.assets.length > 0) {
+        const file = resultado.assets[0];
+        setPdf({
+          uri: file.uri,
+          nome: file.name,
+          tamanho: file.size,
+        });
+
+        // se o usuario nao escrever um titulo
+        if (!titulo) {
+          setTitulo(file.name.replace('.pdf', ''));
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao selecionar o PDF:", error);
+    }
+  };
+
+  // função para processar o PDF localmente e retornar o caminho do arquivo processado
+  const processarPDFLocalmente = async (cacheUri: string, fileName: string) : Promise<string> => {
+    try {
+      // cria um nome unico para evitar que pdfs com o mesmo nome sobrescrevam
+      const uniqueFileName = `${Date.now()}_${fileName}`;
+    
+      const temp = new File(cacheUri);
+
+      if(!temp.exists) {
+        throw new Error("Arquivo temporário não encontrado");
+      }
+
+      const permanent =  new File(Paths.document, uniqueFileName);
+
+      await temp.copy(permanent);
+
+      return permanent.uri;
+    } catch (error) {
+      console.error("Erro ao processar ficheiro:", error);
+      throw error;
+    }
+  }
+
+  // guardar na base de dados
   const handleSalvar = async () => {
     if (!titulo.trim()) return;
-    
     setIsLoading(true);
 
     try {
-      // aponta para a coleção cadernos do firestore
-      const cadernosRef = collection(db, 'cadernos');
+      let finalPdfUri = null;
 
-      // adiciona o novo documento
+      // se o usuario selecionou um PDF, processa fisicamente primeiro
+      if (pdf) {
+        finalPdfUri = await processarPDFLocalmente(pdf.uri, pdf.nome);
+      }
+
+      // adiciona o novo documento na coleção 'cadernos' do Firestore
+      const cadernosRef = collection(db, 'cadernos');
       await addDoc(cadernosRef, {
         titulo: titulo.trim(),
         descricao: descricao.trim(),
+        pdfUri: finalPdfUri || null,
+        pdfNome: pdf ? pdf.nome : null,
         dataCriacao: serverTimestamp(),
         flashcardsCount: 0,
         progresso: 0,
-        ultimoAcesso: serverTimestamp(),
+        ultimoAcesso: serverTimestamp()
       });
 
       Toast.show({
         type: 'success',
-        text1: 'Caderno criado!',
-        text2: 'Seu novo caderno já está pronto para uso.',
-      });
+        text1: 'Caderno criado com sucesso!',
+        text2: 'Você pode começar a adicionar flashcards agora mesmo.',
+      })
 
-      // sucedido: volta para o ecrâ anterior
       router.back();
     } catch (error) {
-      console.error("Erro ao guardar o caderno:", error); 
+      console.error("Erro ao guardar o caderno:", error);
       Toast.show({
         type: 'error',
-        text1: 'Erro',
+        text1: 'Erro ao criar caderno',
         text2: 'Não foi possível criar o caderno.',
       });
     } finally {
       setIsLoading(false);
     }
   };
+
+
 
   return (
     <KeyboardAvoidingView
@@ -108,18 +181,43 @@ export function CreateBookScreen() {
           {/* Área de Anexo de PDF */}
           <TouchableOpacity
             activeOpacity={0.7}
+            onPress={handleSelecionarPDF}
             disabled={isLoading}
-            className="bg-surface-paper p-6 rounded-3xl border-2 border-dashed border-slate-600 mb-10 items-center justify-center py-10"
+            className={`p-6 rounded-3xl border-2 border-dashed mb-10 items-center justify-center py-10 ${
+              pdf ? "bg-primary/10 border-primary" : "bg-surface-paper border-slate-600"
+            }`}
           >
-            <View className="bg-slate-800 h-16 w-16 rounded-full items-center justify-center mb-4">
-              <Plus color="#94a3b8" />
-            </View>
-            <Text className="text-white font-bold text-base mb-1">
-              Anexar Arquivo PDF
-            </Text>
-            <Text className="text-slate-500 text-sm text-center px-4">
-              (Funcionalidade em desenvolvimento)
-            </Text>
+            {pdf ? (
+              <>
+                <View className="bg-primary/20 h-16 w-16 rounded-full items-center justify-center mb-4">
+                  <FileTextIcon color="#8b5cf6" size={32} />
+                </View>
+                <Text className="text-white font-bold text-base mb-1 text-center" numberOfLines={1}>
+                  {pdf.nome}
+                </Text>
+                <TouchableOpacity 
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setPdf(null);
+                  }}
+                  className="mt-2"
+                >
+                  <Text className="text-red-400 text-sm font-semibold">Remover arquivo</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <View className="bg-slate-800 h-16 w-16 rounded-full items-center justify-center mb-4">
+                  <Plus color="#94a3b8" />
+                </View>
+                <Text className="text-white font-bold text-base mb-1">
+                  Anexar Arquivo PDF
+                </Text>
+                <Text className="text-slate-500 text-sm text-center px-4">
+                  Selecione um PDF para o seu caderno
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
 
           {/* Botão Criar */}
