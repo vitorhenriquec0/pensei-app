@@ -143,7 +143,7 @@ export function DashboardScreen() {
         <View className="flex-row justify-between items-end mb-4">
           <Text className="text-xl font-black text-surface">Leituras recentes</Text>
           <TouchableOpacity onPress={() => { router.push('/library')}} className="bg-surface-paper px-3 py-1 rounded-full border border-slate-700">
-            <Text className="text-white font-semibold">Ver todas</Text>
+            <Text className="text-white font-semibold text-sm">Ver todas</Text>
           </TouchableOpacity>
         </View>
 
@@ -182,7 +182,6 @@ export function DashboardScreen() {
         ))}
       
         {/* Placeholder de um Caderno/PDF existente */}
-        
 
         {/* Botão de Adicionar Novo Arquivo */}
         <TouchableOpacity 
@@ -190,7 +189,7 @@ export function DashboardScreen() {
           onPress={() => router.push('/create-book')}
           className="bg-surface-paper p-2 rounded-full border-slate-700 mb-6 items-center justify-center py-4"
         >
-          <Text className="text-white text-xl font-semibold items-center justify-center">
+          <Text className="text-white text-lg font-semibold items-center justify-center">
             + Novo Caderno
           </Text>
         </TouchableOpacity>

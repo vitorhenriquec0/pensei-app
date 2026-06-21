@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Search, Trash2Icon } from "lucide-react-native";
-import { collection, query, orderBy, onSnapshot, QuerySnapshot, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, QuerySnapshot, doc, writeBatch, getDocs } from "firebase/firestore";
 import Toast from "react-native-toast-message";
 import { db } from "../../../config/firebase";
 
@@ -74,7 +74,7 @@ export function LibraryScreen() {
   const handleDelete = (id: string) => {
     Alert.alert(
       "Apagar Caderno",
-      "Tem certeza que deseja apagar este caderno permanentemente?",
+      "Tem certeza que deseja apagar este caderno permanentemente e todos os flashcards anexados?",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -82,16 +82,34 @@ export function LibraryScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await deleteDoc(doc(db, "cadernos", id));
+              // 1. Inicia o "motor atómico" (Batch)
+              const batch = writeBatch(db);
+
+              // 2. Aponta para a subcoleção de flashcards deste caderno específico
+              const flashcardsRef = collection(db, "cadernos", id, "flashcards");
+              const flashcardsSnap = await getDocs(flashcardsRef);
+
+              // 3. Adiciona todos os flashcards encontrados à lista de exclusão do lote
+              flashcardsSnap.forEach((cardDoc) => {
+                batch.delete(cardDoc.ref);
+              });
+
+              // 4. Adiciona o próprio documento do caderno à lista de exclusão
+              const cadernoRef = doc(db, "cadernos", id);
+              batch.delete(cadernoRef);
+
+              // 5. O momento da verdade: Executa a exclusão em cascata
+              await batch.commit();
+
               setDeleted(true); // Opcional, o onSnapshot já vai atualizar a lista sozinho
               
               Toast.show({
                 type: 'success',
                 text1: 'Sucesso!',
-                text2: 'Caderno apagado com sucesso.',
+                text2: 'Caderno e flashcards apagados com sucesso.',
               });
             } catch (error) {
-              console.error("Erro ao apagar caderno:", error);
+              console.error("Erro ao apagar caderno em cascata:", error);
               Toast.show({
                 type: 'error',
                 text1: 'Erro',
