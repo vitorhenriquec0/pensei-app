@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { ArrowBigLeft, Plus, FileTextIcon } from "lucide-react-native";
+import { Plus, FileTextIcon, ArrowLeftCircleIcon } from "lucide-react-native";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 // sistema de ficheiros
@@ -140,12 +140,12 @@ export function CreateBookScreen() {
     >
       <ScrollView className="flex-1 px-6 pt-16">
         {/* Cabeçalho */}
-        <View className="flex-column items-center justify-between mb-10">
-          <TouchableOpacity onPress={() => router.back()} className="p-2">
-            <ArrowBigLeft color="#94a3b8" />
+        <View className="flex-row items-center justify-between mb-10">
+          <TouchableOpacity onPress={() => router.back()} className="p-2 flex-row gap-2 items-center">
+            <ArrowLeftCircleIcon color="#94a3b8" />
             <Text className="text-slate-400 font-bold">Voltar</Text>
           </TouchableOpacity>
-          <Text className="text-white font-bold text-lg">Novo Caderno</Text>
+          <Text className="text-white font-bold text-lg ">Novo Caderno</Text>
           <View className="w-12" />
         </View>
 

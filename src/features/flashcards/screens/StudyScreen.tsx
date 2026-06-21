@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, Dimensions, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, Dimensions, ScrollView, ActivityIndicator, Image } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Flashcard } from "../components/Flashcard";
-import { ArrowLeftCircleIcon, XIcon, RotateCcwIcon, MapPinIcon } from "lucide-react-native";
+import { ArrowLeftCircleIcon, XIcon, RotateCcwIcon, MapPinIcon, CheckCircle } from "lucide-react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, interpolate } from "react-native-reanimated";
 import Toast from "react-native-toast-message";
 
-import { collectionGroup, query, getDocs, limit, doc, updateDoc, Timestamp, where } from "firebase/firestore";
+import { collectionGroup, query, getDocs, limit, doc, updateDoc, collection, where } from "firebase/firestore";
 import { db } from "../../../config/firebase";
 
 const { width } = Dimensions.get('window');
@@ -23,6 +23,9 @@ interface FlashcardData {
 export function StudyScreen() {
     const router = useRouter();
 
+    // capturar parametros
+    const { modo, cadernosIds } = useLocalSearchParams();
+
     // estados de dados
     const [cards, setCards] = useState<FlashcardData[]>([]);
     const [loading, setLoading] = useState(true);
@@ -32,6 +35,7 @@ export function StudyScreen() {
     const [isFlipped, setIsFlipped] = useState(false);
     const rotationProgress = useSharedValue(0); // 0 - frente, 1 - verso
 
+    // variaveis computadas
     const currentCard = cards[currentIndex];
     const totalCards = cards.length;
     const progressPercentage = ((currentIndex + 1) / totalCards) * 100;
@@ -39,41 +43,76 @@ export function StudyScreen() {
 
     // busca global para sessão diaria
     useEffect(() => {
-        const carregarSessaoDiaria = async () => {
+        const carregarCards = async () => {
             try {
+                setLoading(true);
+                let cardsCarregados: FlashcardData[] = [];
                 const hoje = new Date();
 
-                // le todas subcoleções "flashcards"
-                const q = query(
-                    collectionGroup(db, 'flashcards'),
-                    where('proximaRevisao', '<=', hoje),
-                    limit(20) // test
-                );
+                // modo personalizado: busca apenas nos cadernos selecionados
+                if (modo === 'personalizada' && cadernosIds) {
+                    // converte a string de IDs em array
+                    const ids: string[] = JSON.parse(cadernosIds as string);
 
-                const querySnapshot = await getDocs(q);
-                const cardsCarregados: FlashcardData[] = [];
+                    // busca todos os flashcards das subcoleções "flashcards" dos cadernos selecionados
+                    for (const cadernoId of ids) {
+                        const cardsRef = collection(db, 'cadernos', cadernoId, 'flashcards');
 
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    cardsCarregados.push({
-                        id: doc.id,
-                        pergunta: data.pergunta,
-                        resposta: data.resposta,
-                        contexto: data.contexto,
-                        refPath: doc.ref.path
+                        const q = query(
+                            cardsRef,
+                            limit(100) // 100 cards por sessão
+                        )
+
+                        const snap = await getDocs(q);
+
+                        snap.forEach((doc) => {
+                            const data = doc.data();
+                            cardsCarregados.push({
+                                id: doc.id,
+                                pergunta: data.pergunta,
+                                resposta: data.resposta,
+                                contexto: data.contexto,
+                                refPath: doc.ref.path
+                            });
+                        });
+                    }
+
+                    cardsCarregados = cardsCarregados.sort(() => Math.random() - 0.5);
+                } else {
+                    // revisão diaria: busca todos os flashcards com proximaRevisao <= hoje
+                    // le todas subcoleções "flashcards"
+                    const q = query(
+                        collectionGroup(db, 'flashcards'),
+                        where('proximaRevisao', '<=', hoje),
+                        limit(100) // 100 cards por sessão
+                    );
+
+                    const querySnapshot = await getDocs(q);
+
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        cardsCarregados.push({
+                            id: doc.id,
+                            pergunta: data.pergunta,
+                            resposta: data.resposta,
+                            contexto: data.contexto,
+                            refPath: doc.ref.path
+                        });
                     });
-                });
+                }
 
                 setCards(cardsCarregados);
+
+
             } catch (error) {
-                console.error("Erro ao carregar a sessão global:", error);                
+                console.error("Erro ao carregar flashcards:", error);                
             } finally {
                 setLoading(false);
             }
         };
 
-        carregarSessaoDiaria();
-    }, []);
+        carregarCards();
+    }, [modo, cadernosIds]);
 
 
     // dispara a virada
@@ -211,6 +250,11 @@ export function StudyScreen() {
 
     return (
         <SafeAreaView className="flex-1 bg-surface pt-10">
+
+            <View className='absolute inset-0 z-0 opacity-15'>
+                <Image source={require('../../../../assets/images/FundoBranco.png')} className="w-full h-full scale-150" />
+            </View>
+
             {/* Header e progresso */}
             <View className="px-6 pb-4">
                 <View className="flex-row items-center justify-between mb-4">
@@ -218,7 +262,7 @@ export function StudyScreen() {
                         <XIcon color="#94a3b8" size={24}/>
                     </TouchableOpacity>
                     <Text className="text-slate-400 font-bold uppercase tracking-wider text-xs">
-                        Revisão Diária
+                        {modo === 'personalizada' ? 'Estudo Personalizado' : 'Revisão Diária'}
                     </Text>
                     <View className="w-10"/>
                 </View>
@@ -245,11 +289,36 @@ export function StudyScreen() {
 
             {/* Área do flashcard */}
             {totalCards === 0 ? (
-                <View className="flex-1 items-center justify-center px-6 mb-10">
-                    <Text className="text-slate-400 text-center">
-                        Nenhum cartão para revisar hoje!
-                    </Text>
-                </View>
+                <View className="flex-1 items-center justify-center px-6 pb-20">
+                        <View className="bg-surface-paper w-full p-8 rounded-3xl items-center justify-center border border-slate-800 shadow shadow-inherited">
+                            
+                            {/* Ícone de Sucesso / Vitória */}
+                            <View className="bg-green-500/10 p-5 rounded-full mb-5 border border-green-500/20">
+                                <CheckCircle color="#22c55e" size={44} strokeWidth={2.5} />
+                            </View>
+                            
+                            {/* Textos de Recompensa */}
+                            <Text className="text-white font-black text-2xl mb-2 text-center">
+                                Tudo em dia!
+                            </Text>
+                            <Text className="text-slate-400 text-sm text-center mb-8 px-2 leading-relaxed">
+                                Você não tem flashcards pendentes para rever neste momento. Aproveite para descansar!
+                            </Text>
+                            
+                            {/* Botão de Retorno (Elegante e Secundário) */}
+                            <TouchableOpacity 
+                                activeOpacity={0.8}
+                                onPress={() => router.back()}
+                                className="bg-slate-800 border border-slate-700 w-full py-4 rounded-full flex-row items-center justify-center"
+                            >
+                                <ArrowLeftCircleIcon color="#94a3b8" size={20} />
+                                <Text className="text-slate-300 font-bold ml-3 uppercase tracking-wider text-sm">
+                                    Voltar ao Dashboard
+                                </Text>
+                            </TouchableOpacity>
+                            
+                        </View>
+                    </View>
             ) : (
                             <View className="flex-1 px-6 py-4 items-center justify-center">
                 {/* Container geral */}

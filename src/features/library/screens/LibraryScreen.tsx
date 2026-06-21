@@ -33,6 +33,8 @@ export function LibraryScreen() {
   const [loading, setLoading] = useState(true);
   const [deleted, setDeleted] = useState(false); // estado para controlar exclusão
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   // o hook useEffect liga o ouvinte assim que ocrâ abre
   useEffect(() => {
     // aponta para a coleção e ordena do mais recente p/ o mais antigo
@@ -70,6 +72,10 @@ export function LibraryScreen() {
     // limpeza: desliga o radio se sair do ecra
     return () => unsubscribe();
   }, []);
+
+  const cadernosFiltrados = cadernos.filter(caderno =>
+    caderno.titulo.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleDelete = (id: string) => {
     Alert.alert(
@@ -137,6 +143,7 @@ export function LibraryScreen() {
             placeholder="Buscar cadernos..."
             placeholderTextColor="#64748B"
             className="flex-1 text-white text-base"
+            onChangeText={setSearchQuery}
           />
         </View>
       </View>
@@ -161,7 +168,7 @@ export function LibraryScreen() {
 
           {/* Mapeia os cadernos */}
 
-          {cadernos.map((book) => (
+          {cadernosFiltrados.map((book) => (
             <TouchableOpacity
               key={book.id}
               activeOpacity={0.7}

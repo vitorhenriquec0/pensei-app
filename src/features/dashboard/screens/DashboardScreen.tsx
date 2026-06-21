@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeftCircleIcon, ArrowRight, XIcon } from 'lucide-react-native';
+import { ArrowLeftCircleIcon, ArrowRight, XIcon, Settings, FileText, Plus, BookX } from 'lucide-react-native';
 
 import { db } from '../../../config/firebase';
 import { collection, onSnapshot, query, orderBy, snapshotEqual } from 'firebase/firestore';
@@ -114,48 +114,45 @@ export function DashboardScreen() {
 `;
 
   return (
-    <ScrollView className="flex-1 bg-surface px-6 pt-16">
+    <ScrollView className="flex-1 bg-surface px-6 pt-16" showsVerticalScrollIndicator={false}>
       
-      {/* Cabeçalho de Boas-vindas */}
-      <View className="mb-8">
-        <Text className="text-3xl font-extrabold text-white tracking-tight">
-          Bom dia, Vitor!
-        </Text>
-
-      {(cadernos.reduce((acc, caderno) => acc + caderno.flashcardsCount, 0)) === 0 ? (
-        <Text className="text-slate-400 mt-2 text-base">
-          Você ainda não tem flashcards para revisar hoje.
-        </Text>
-      ) : (
-        <Text className="text-slate-400 mt-2 text-base">
-          Você tem
-          <Text className="font-bold text-primary font-serif">  
-            {` `}{cadernos.reduce((acc, caderno) => acc + caderno.flashcardsCount, 0)}{(cadernos.reduce((acc, caderno) => acc + caderno.flashcardsCount, 0)) === 1 ? ' flashcard' : ' flashcards'}{` `}
+      {/* Cabeçalho */}
+      <View className="flex-row justify-between items-start mb-8">
+        <View className="flex-1 mr-4">
+          <Text className="text-3xl font-black text-white tracking-tight">
+            Bom dia, Vitor!
           </Text>
-            para revisar hoje.
-          </Text>
-      )}
-
-        
+          {(cadernos.reduce((acc, caderno) => acc + caderno.flashcardsCount, 0)) === 0 ? (
+            <Text className="text-slate-400 mt-1 text-base">
+              Nenhum flashcard para hoje.
+            </Text>
+          ) : (
+            <Text className="text-slate-400 mt-1 text-base leading-5">
+              Você tem <Text className="text-primary font-bold font-serif">{cadernos.reduce((acc, caderno) => acc + caderno.flashcardsCount, 0)} flashcards</Text> para revisar hoje.
+            </Text>
+          )}
+        </View>
+        <TouchableOpacity className="bg-slate-800 p-3 rounded-2xl border border-slate-700">
+          <Settings color="white" size={20} />
+        </TouchableOpacity>
       </View>
 
       {/* Botão da Sessão Diária */}
       <TouchableOpacity 
-        activeOpacity={0.8}
+        activeOpacity={0.9}
         onPress={() => router.push({ pathname: '/study', params: { modo: 'diaria' }})}
-        className="bg-primary rounded-3xl p-6 mb-4 shadow-sm flex-row items-center justify-between"
+        className="bg-primary rounded-3xl p-6 mb-4 shadow-xl shadow-yellow-500/20 flex-row items-center justify-between overflow-hidden"
       >
-
-        <View>
-          <Text className="text-white font-semibold mb-1 uppercase tracking-wider text-xs">
+        <View className="flex-1 mr-4">
+          <Text className="text-white/80 font-bold mb-1 uppercase tracking-wider text-xs">
             Sessão Diária
           </Text>
-          <Text className="text-white text-xl font-extrabold">
+          <Text className="text-white text-2xl font-black">
             Começar Revisão
           </Text>
         </View>
         
-        <View className="bg-white h-12 w-12 rounded-full items-center justify-center">
+        <View className="bg-white h-12 w-12 rounded-full items-center justify-center shadow-sm">
           <ArrowRight color="#EAB308" size={24} />
         </View>
       </TouchableOpacity>
@@ -163,19 +160,19 @@ export function DashboardScreen() {
 
       {/* Botão da Sessão de Estudos Personalizados */}
       <TouchableOpacity 
-        activeOpacity={0.8}
+        activeOpacity={0.9}
         onPress={() => setStudyModalVisible(true)}
-        className="bg-amber-100 rounded-3xl p-6 mb-10 shadow-sm flex-row items-center justify-between"
+        className="bg-amber-100 rounded-3xl p-6 mb-10 shadow-sm flex-row items-center justify-between border border-amber-200 overflow-hidden"
       >
-        <View className='absolute inset-0 z-0 opacity-30 rounded-3xl overflow-hidden'>
+        <View className='absolute inset-0 z-0 opacity-20'>
               <Image source={require('../../../../assets/images/FundoAmarelo.png')} className="w-full h-full scale-150" />
         </View>
-        <View>
-          <Text className="text-primary-dark font-semibold mb-1 uppercase tracking-wider text-xs">
+        <View className="flex-1 mr-4">
+          <Text className="text-primary-dark/60 font-bold mb-1 uppercase tracking-wider text-xs">
             Sessão de Estudo Personalizado
           </Text>
-          <Text className="text-primary-dark text-xl font-extrabold">
-            Iniciar <Text className="font-serif font-black italic text-xl">Revisão Personalizada</Text>
+          <Text className="text-primary-dark text-xl font-bold">
+            Iniciar <Text className="font-serif font-black">Revisão Personalizada</Text> 
           </Text>
         </View>
         
@@ -184,62 +181,89 @@ export function DashboardScreen() {
         </View>
       </TouchableOpacity>
 
-      {/* Seção de Cadernos / Leituras */}
-      <View className="mb-6 bg-white p-6 rounded-3xl ">
-        <View className="flex-row justify-between items-end mb-4">
-          <Text className="text-xl font-black text-surface">Leituras recentes</Text>
-          <TouchableOpacity onPress={() => { router.push('/library')}} className="bg-surface-paper px-3 py-1 rounded-full border border-slate-700">
-            <Text className="text-white font-semibold text-sm">Ver todas</Text>
+
+      <View className="mb-10 px-1">
+        
+        {/* Cabeçalho da Secção */}
+        <View className="flex-row justify-between items-center mb-6">
+          <Text className="text-xl font-black text-white tracking-tight">Leituras Recentes</Text>
+          <TouchableOpacity 
+            onPress={() => router.push('/library')} 
+            className="bg-slate-800 px-4 py-2 rounded-full border border-slate-700"
+          >
+            <Text className="text-slate-300 font-bold text-xs">Ver todas</Text>
           </TouchableOpacity>
         </View>
 
-        {loading && (
-          <View className="flex-1 items-center justify-center mt-4 mb-6">
-            <ActivityIndicator size="large" color="#EAB308" />
+        {loading ? (
+          <ActivityIndicator size="small" color="#EAB308" className="my-8" />
+        ) : cadernos.length === 0 ? (
+          
+          <View className="bg-slate-800/30 p-8 rounded-[32px] items-center justify-center mb-4 border border-slate-800 border-dashed">
+            <View className="bg-slate-800 p-4 rounded-full mb-4">
+              <BookX color="#94a3b8" size={32} />
+            </View>
+            <Text className="text-white font-bold text-base mb-1">Nenhum caderno aqui</Text>
+            <Text className="text-slate-400 text-sm text-center mb-6 px-4">
+              A sua biblioteca está vazia. Crie o seu primeiro caderno para começar a estudar.
+            </Text>
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => router.push('/create-book')}
+              className="bg-primary px-6 py-3 rounded-full flex-row items-center"
+            >
+              <Plus color="#ffffff" size={20} />
+              <Text className="text-white font-bold ml-2">Criar Caderno</Text>
+            </TouchableOpacity>
           </View>
-        )}
 
-        {cadernos.length === 0 && !loading ? (
-          <View className="items-center justify-center mt-6 mb-8">
-            <Text className="text-slate-400 text-center">Nenhum caderno encontrado. Crie o seu primeiro caderno para começar a estudar!</Text>
-          </View>
         ) : (
-          cadernos.slice(0, 3).map((caderno) => (
+          <View>
+            {/* Lista de Cadernos */}
+            {cadernos.slice(0, 3).map((caderno) => (
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                key={caderno.id}
+                onPress={() => router.push(`/book/${caderno.id}`)}
+                className="bg-slate-800 p-4 rounded-[28px] mb-3 flex-row items-center shadow-lg shadow-black/20"
+              >
+                {/* Ícone com fundo suave */}
+                <View className="bg-red-500/10 h-14 w-14 rounded-2xl items-center justify-center mr-4">
+                  <FileText color="#f87171" size={24} />
+                </View>
+                
+                <View className="flex-1 pr-2">
+                  <Text className="text-white font-bold text-base mb-1" numberOfLines={1}>
+                    {caderno.titulo}
+                  </Text>
+                  <Text className="text-slate-400 text-xs">
+                    {caderno.flashcardsCount} flashcard{caderno.flashcardsCount !== 1 && 's'} • {caderno.ultimoAcesso}
+                  </Text>
+                </View>
+
+                {/* Pequena seta de indicação de clique */}
+                <View className="bg-slate-700/50 p-2 rounded-full">
+                  <ArrowRight color="#94a3b8" size={16} />
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            {/* Botão Novo Caderno (Caso já existam cadernos) */}
             <TouchableOpacity 
               activeOpacity={0.7}
-              className="bg-surface-paper p-5 rounded-2xl  shadow-sm mb-3 flex-row items-center"
-              key={caderno.id}
-              onPress={() => router.push(`/book/${caderno.id}`)}
+              onPress={() => router.push('/create-book')}
+              className="bg-slate-800/50 p-5 rounded-[28px] mt-2 flex-row items-center justify-center border border-slate-700"
             >
-              {/* Ícone do PDF adaptado para o modo escuro */}
-              <View className="bg-red-500/10 h-12 w-12 rounded-xl items-center justify-center mr-4 border border-red-500/20">
-                <Text className="text-red-400 font-bold text-xs uppercase">PDF</Text>
-              </View>
-              <View className="flex-1">
-                <Text className="text-white font-bold text-base" numberOfLines={1}>
-                  {caderno.titulo}
-                </Text>
-                <Text className="text-slate-400 text-sm mt-1">
-                  {caderno.flashcardsCount === 0 ? 'Nenhum flashcard' : caderno.flashcardsCount === 1 ? '1 flashcard' : `${caderno.flashcardsCount} flashcards`} • Acesso {caderno.ultimoAcesso}
-                </Text>
-              </View>
-          </TouchableOpacity>
-          )
-        ))}
-      
-        {/* Placeholder de um Caderno/PDF existente */}
-
-        {/* Botão de Adicionar Novo Arquivo */}
-        <TouchableOpacity 
-          activeOpacity={0.7}
-          onPress={() => router.push('/create-book')}
-          className="bg-surface-paper p-2 rounded-full border-slate-700 mb-6 items-center justify-center py-4"
-        >
-          <Text className="text-white text-lg font-semibold items-center justify-center">
-            + Novo Caderno
-          </Text>
-        </TouchableOpacity>
+              <Plus color="#94a3b8" size={20} />
+              <Text className="text-slate-400 font-bold text-sm ml-2 uppercase tracking-wider">
+                Novo Caderno
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
+
+      
 
       {/* Modal de Sessão de Estudos Personalizados */}
       <Modal
@@ -275,7 +299,7 @@ export function DashboardScreen() {
 
             <ScrollView showsVerticalScrollIndicator={true} className='mb-6 max-h-[280px] flex-shrink'>
               {cadernosDisponiveis.length === 0 ? (
-                <Text className='text-slate-400 text-center mt-4'>Nenhum caderno criado ainda.</Text>
+                <Text className='text-black/50 font-medium tracking-wider text-center mt-4'>Nenhum caderno criado ainda.</Text>
               ) : (
                 cadernosDisponiveis.map((caderno) => {
                   const selecionado = cadernosSelecionados.includes(caderno.id);
